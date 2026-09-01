@@ -144,7 +144,7 @@ regra do backend depende dele — login não está no escopo (AGENTS.md §12).
 | ESTC-2 Reservas | ⬜ | ⬜ | |
 | ESTC-3 Ranking | ⬜ | ⬜ | |
 | ESTC-4 Lista de espera | ⬜ | ⬜ | |
-| ESTC-5 Histórico | ⬜ | ⬜ | |
+| ESTC-5 Histórico | ✅ | ✅ | Testado na tela: criação, cancelamento, entrada/saída da fila e promoção (com o cancelamento de origem) aparecem em ordem cronológica; reserva sem eventos além da criação e ID inexistente também conferidos |
 
 Mantenha esta tabela sincronizada com a realidade. Marcar como pronto o que não foi visto
 funcionando na tela é o pior erro possível aqui.
