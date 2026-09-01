@@ -13,8 +13,8 @@ import { WaitlistModule } from './waitlist/waitlist.module';
     HistoryModule,
     SectorsModule,
     ReservationsModule,
-    WaitlistModule,
     RankingModule,
+    WaitlistModule,
   ],
 })
 export class AppModule {}

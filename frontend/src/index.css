@@ -181,7 +181,17 @@ h2 {
   color: var(--suave);
 }
 
-.campos input {
+.campos--busca {
+  align-items: end;
+  margin-bottom: 0;
+}
+
+.campos--busca button {
+  height: 38px;
+}
+
+.campos input,
+.campos select {
   padding: 9px 12px;
   border: 1px solid var(--borda);
   border-radius: 8px;
@@ -197,7 +207,8 @@ h2 {
   color: #aab2c4;
 }
 
-.campos input:focus {
+.campos input:focus,
+.campos select:focus {
   outline: none;
   border-color: var(--roxo);
   box-shadow: 0 0 0 3px rgb(79 70 229 / 14%);
@@ -223,6 +234,57 @@ button:hover:not(:disabled) {
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.botao--secundario {
+  background: var(--branco);
+  border: 1px solid var(--erro-borda);
+  color: var(--erro);
+}
+
+.botao--secundario:hover:not(:disabled) {
+  background: var(--erro-fundo);
+}
+
+.tabela__acoes {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.tabela__acoes button {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* ---------- status da reserva ---------- */
+
+.status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status--agendado {
+  background: var(--roxo-claro);
+  color: var(--roxo);
+}
+
+.status--em_uso {
+  background: rgb(34 211 238 / 15%);
+  color: #0e7490;
+}
+
+.status--concluido {
+  background: rgb(6 118 71 / 12%);
+  color: var(--sucesso);
+}
+
+.status--cancelado {
+  background: var(--erro-fundo);
+  color: var(--erro);
 }
 
 /* ---------- mensagens ---------- */
