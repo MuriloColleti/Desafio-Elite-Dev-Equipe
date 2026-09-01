@@ -147,6 +147,63 @@ As stories **não** são independentes. Ignorar isto custa merge quebrado na úl
 
 ---
 
+## 4.1 Ciclo de vida da reserva e da lista de espera (definido pelo grupo)
+
+Decisão do time, fora do enunciado. Vale para ESTC-2, ESTC-4 e ESTC-5.
+
+### Os quatro estados
+
+| Estado | Quando | Ocupa vaga? |
+|---|---|---|
+| `AGENDADO` | ao criar a reserva (padrão) | **sim** |
+| `EM_USO` | após o check-in | **sim** |
+| `CONCLUIDO` | após o check-out | não |
+| `CANCELADO` | ao cancelar | não |
+
+**Cota disponível = `quota` − reservas em `AGENDADO` ou `EM_USO`.**
+Nunca escreva essa lista à mão: use `ocupaVaga()` de `common/reservation-status.ts`.
+
+`EM_USO` ocupa vaga porque o carro está fisicamente no pátio — liberar no
+check-in venderia o mesmo lugar duas vezes.
+
+### Check-in e check-out
+
+Um modal na reserva, com o botão decidido pelo estado atual:
+
+- `AGENDADO` → botão **Check-in** → vira `EM_USO`, grava `checkedInAt`
+- `EM_USO` → botão **Check-out** → vira `CONCLUIDO`, grava `checkedOutAt`
+- `CONCLUIDO` e `CANCELADO` → só leitura, sem ação
+
+As duas transições gravam evento no histórico (`CHECKED_IN`, `CHECKED_OUT`).
+
+**Só o cancelamento aciona a lista de espera.** Check-out libera a vaga pela
+cota, sem promover ninguém — quem estava na fila reserva normalmente.
+
+### Quem é o próximo da fila
+
+**O menor `position` do setor.** `WaitlistEntry.position` é atribuído na entrada
+como `max(position do setor) + 1`, e **nunca é renumerado**: quem sai deixa um
+buraco (1, 3, 7) e a ordem continua correta, porque só importa o menor. Renumerar
+custaria escrita em N linhas e não muda o resultado.
+
+A fila é **por setor**: o `position` só é comparável dentro do mesmo `sectorId`.
+
+### O que acontece ao cancelar
+
+Tudo numa transação só:
+
+1. `UPDATE ... WHERE id = ? AND status = 'AGENDADO'` (ou `EM_USO`) — se não
+   afetou linha, a reserva já não estava ativa e nada mais acontece.
+2. Busca o menor `position` da fila daquele setor.
+3. **Achou** → cria a reserva da placa promovida (`AGENDADO`), remove da fila,
+   e a **cota não muda**.
+   **Não achou** → a cota volta a subir em 1, naturalmente.
+
+A cota não pode subir e descer no meio do caminho: haveria um instante em que a
+vaga estaria livre para um terceiro motorista.
+
+---
+
 ## 5. Stack
 
 - **Back:** NestJS (TypeScript), Prisma ORM, PostgreSQL 16 via Docker Compose.
@@ -206,16 +263,18 @@ model Reservation {
   sectorId    String
   sector      Sector             @relation(fields: [sectorId], references: [id])
   expectedAt  DateTime           // data/hora prevista de chegada
-  status      ReservationStatus  @default(ACTIVE)
-  createdAt   DateTime           @default(now())
-  cancelledAt DateTime?
+  status       ReservationStatus @default(AGENDADO)
+  createdAt    DateTime          @default(now())
+  checkedInAt  DateTime?
+  checkedOutAt DateTime?
+  cancelledAt  DateTime?
   events      ReservationEvent[]
 
   @@index([sectorId])
   @@index([plate])
 }
 
-enum ReservationStatus { ACTIVE CANCELLED }
+enum ReservationStatus { AGENDADO EM_USO CONCLUIDO CANCELADO }
 
 model WaitlistEntry {
   id         String   @id @default(uuid())
@@ -243,6 +302,8 @@ model ReservationEvent {
 
 enum ReservationEventType {
   CREATED
+  CHECKED_IN
+  CHECKED_OUT
   CANCELLED
   WAITLIST_JOINED
   WAITLIST_LEFT
@@ -251,7 +312,8 @@ enum ReservationEventType {
 ```
 
 **Cota disponível é derivada, nunca armazenada.**
-`disponível = sector.quota − count(reservations WHERE sectorId = ? AND status = 'ACTIVE')`.
+`disponível = sector.quota − count(reservations em AGENDADO ou EM_USO)`.
+Use `ocupaVaga()` de `common/reservation-status.ts` — não repita a lista de estados.
 Guardar um contador em coluna cria dois lugares para ficarem fora de sincronia. Proibido.
 
 ---

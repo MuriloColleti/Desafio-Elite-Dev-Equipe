@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { ReservationStatus } from '@prisma/client';
 import { SetorNaoEncontradoError } from '../common/errors';
+import { ocupaVaga } from '../common/reservation-status';
 import { TxClient } from '../common/transaction';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSectorDto } from './dto/create-sector.dto';
@@ -38,7 +38,7 @@ export class SectorsService {
       orderBy: { createdAt: 'asc' },
       include: {
         _count: {
-          select: { reservations: { where: { status: ReservationStatus.ACTIVE } } },
+          select: { reservations: { where: ocupaVaga() } },
         },
       },
     });
@@ -54,7 +54,7 @@ export class SectorsService {
       where: { id },
       include: {
         _count: {
-          select: { reservations: { where: { status: ReservationStatus.ACTIVE } } },
+          select: { reservations: { where: ocupaVaga() } },
         },
       },
     });
@@ -86,7 +86,7 @@ export class SectorsService {
     }
 
     const ativas = await tx.reservation.count({
-      where: { sectorId, status: ReservationStatus.ACTIVE },
+      where: { sectorId, ...ocupaVaga() },
     });
 
     return setor.quota - ativas;
