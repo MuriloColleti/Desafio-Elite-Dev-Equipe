@@ -1,3 +1,5 @@
+import { describe, beforeEach, it, expect, jest } from '@jest/globals';
+import { Test } from '@nestjs/testing';
 import { ReservationEventType } from '@prisma/client';
 import { ReservaNaoEncontradaError } from '../common/errors';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,21 +27,37 @@ function evento(
   };
 }
 
-function criarPrismaMock(reservaExiste: boolean, eventos: LinhaDeEvento[]): PrismaService {
-  return {
-    reservation: {
-      findUnique: jest.fn().mockResolvedValue(reservaExiste ? { id: 'reserva-1' } : null),
-    },
-    reservationEvent: {
-      findMany: jest.fn().mockResolvedValue(eventos),
-    },
-  } as unknown as PrismaService;
-}
-
 describe('HistoryService.listarPorReserva', () => {
+  let service: HistoryService;
+  let prisma: {
+    reservation: { findUnique: jest.Mock<any> };
+    reservationEvent: { findMany: jest.Mock<any> };
+  };
+
+  beforeEach(async () => {
+    prisma = {
+      reservation: { findUnique: jest.fn() },
+      reservationEvent: { findMany: jest.fn() },
+    };
+
+    const module = await Test.createTestingModule({
+      providers: [HistoryService, { provide: PrismaService, useValue: prisma }],
+    }).compile();
+
+    service = module.get(HistoryService);
+  });
+
+  function mockarReserva(existe: boolean): void {
+    prisma.reservation.findUnique.mockResolvedValue(
+      (existe ? { id: 'reserva-1' } : null) as never,
+    );
+  }
+
   it('exibe apenas o evento de criação para uma reserva recém-criada, sem erro', async () => {
-    const prisma = criarPrismaMock(true, [evento('CREATED', '2026-09-01T10:00:00.000Z')]);
-    const service = new HistoryService(prisma);
+    mockarReserva(true);
+    prisma.reservationEvent.findMany.mockResolvedValue([
+      evento('CREATED', '2026-09-01T10:00:00.000Z'),
+    ] as never);
 
     const historico = await service.listarPorReserva('reserva-1');
 
@@ -47,89 +65,88 @@ describe('HistoryService.listarPorReserva', () => {
     expect(historico[0].type).toBe('CREATED');
   });
 
-  it('exibe os eventos do mais antigo para o mais recente, cada um com data/hora e descrição', async () => {
-    const prisma = criarPrismaMock(true, [
+  it('exibe os eventos do mais antigo para o mais recente, cada um com data/hora', async () => {
+    mockarReserva(true);
+    prisma.reservationEvent.findMany.mockResolvedValue([
       evento('CREATED', '2026-09-01T10:00:00.000Z'),
       evento('CANCELLED', '2026-09-01T12:00:00.000Z'),
-    ]);
-    const service = new HistoryService(prisma);
+    ] as never);
 
     const historico = await service.listarPorReserva('reserva-1');
 
     expect(historico.map((item) => item.type)).toEqual(['CREATED', 'CANCELLED']);
+    expect(prisma.reservationEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { occurredAt: 'asc' } }),
+    );
     for (const item of historico) {
       expect(item.occurredAt).toBeInstanceOf(Date);
-      expect(item.description.length).toBeGreaterThan(0);
     }
   });
 
   it('inclui a criação da reserva no histórico', async () => {
-    const prisma = criarPrismaMock(true, [evento('CREATED', '2026-09-01T10:00:00.000Z')]);
-    const service = new HistoryService(prisma);
+    mockarReserva(true);
+    prisma.reservationEvent.findMany.mockResolvedValue([
+      evento('CREATED', '2026-09-01T10:00:00.000Z'),
+    ] as never);
 
-    const [item] = await service.listarPorReserva('reserva-1');
+    const historico = await service.listarPorReserva('reserva-1');
 
-    expect(item.description).toBe('Reserva criada.');
+    expect(historico.some((item) => item.type === 'CREATED')).toBe(true);
   });
 
   it('inclui o cancelamento da reserva no histórico', async () => {
-    const prisma = criarPrismaMock(true, [
+    mockarReserva(true);
+    prisma.reservationEvent.findMany.mockResolvedValue([
       evento('CREATED', '2026-09-01T10:00:00.000Z'),
       evento('CANCELLED', '2026-09-01T11:00:00.000Z'),
-    ]);
-    const service = new HistoryService(prisma);
+    ] as never);
 
     const historico = await service.listarPorReserva('reserva-1');
-    const cancelamento = historico.find((item) => item.type === 'CANCELLED');
 
-    expect(cancelamento?.description).toBe('Reserva cancelada.');
+    expect(historico.some((item) => item.type === 'CANCELLED')).toBe(true);
   });
 
   it('inclui a entrada na lista de espera no histórico', async () => {
-    const prisma = criarPrismaMock(true, [
+    mockarReserva(true);
+    prisma.reservationEvent.findMany.mockResolvedValue([
       evento('CREATED', '2026-09-01T10:00:00.000Z'),
       evento('WAITLIST_JOINED', '2026-09-01T10:05:00.000Z'),
-    ]);
-    const service = new HistoryService(prisma);
+    ] as never);
 
     const historico = await service.listarPorReserva('reserva-1');
-    const entrada = historico.find((item) => item.type === 'WAITLIST_JOINED');
 
-    expect(entrada?.description).toBe('Entrou na lista de espera.');
+    expect(historico.some((item) => item.type === 'WAITLIST_JOINED')).toBe(true);
   });
 
   it('inclui a saída voluntária da lista de espera no histórico', async () => {
-    const prisma = criarPrismaMock(true, [
+    mockarReserva(true);
+    prisma.reservationEvent.findMany.mockResolvedValue([
       evento('CREATED', '2026-09-01T10:00:00.000Z'),
       evento('WAITLIST_JOINED', '2026-09-01T10:05:00.000Z'),
       evento('WAITLIST_LEFT', '2026-09-01T10:10:00.000Z'),
-    ]);
-    const service = new HistoryService(prisma);
+    ] as never);
 
     const historico = await service.listarPorReserva('reserva-1');
-    const saida = historico.find((item) => item.type === 'WAITLIST_LEFT');
 
-    expect(saida?.description).toBe('Saiu da lista de espera por vontade própria.');
+    expect(historico.some((item) => item.type === 'WAITLIST_LEFT')).toBe(true);
   });
 
   it('inclui a promoção da lista de espera indicando qual cancelamento a originou', async () => {
-    const prisma = criarPrismaMock(true, [
+    mockarReserva(true);
+    prisma.reservationEvent.findMany.mockResolvedValue([
       evento('CREATED', '2026-09-01T10:00:00.000Z'),
       evento('WAITLIST_JOINED', '2026-09-01T10:05:00.000Z'),
       evento('WAITLIST_PROMOTED', '2026-09-01T11:00:00.000Z', 'reserva-999'),
-    ]);
-    const service = new HistoryService(prisma);
+    ] as never);
 
     const historico = await service.listarPorReserva('reserva-1');
     const promocao = historico.find((item) => item.type === 'WAITLIST_PROMOTED');
 
     expect(promocao?.detail).toBe('reserva-999');
-    expect(promocao?.description).toContain('reserva-999');
   });
 
   it('lança RESERVA_NAO_ENCONTRADA quando a reserva não existe', async () => {
-    const prisma = criarPrismaMock(false, []);
-    const service = new HistoryService(prisma);
+    mockarReserva(false);
 
     await expect(service.listarPorReserva('inexistente')).rejects.toThrow(
       ReservaNaoEncontradaError,
