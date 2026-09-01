@@ -55,7 +55,7 @@ model WaitlistEntry {
   position   Int
   createdAt  DateTime @default(now())
 
-  @@unique([sectorId, plate])
+  @@unique([plate])
   @@index([sectorId, position])
   @@map("waitlist_entries")
 }

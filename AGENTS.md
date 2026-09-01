@@ -187,6 +187,8 @@ buraco (1, 3, 7) e a ordem continua correta, porque só importa o menor. Renumer
 custaria escrita em N linhas e não muda o resultado.
 
 A fila é **por setor**: o `position` só é comparável dentro do mesmo `sectorId`.
+Mas a placa entra em **uma fila só** no pátio inteiro — `UNIQUE (plate)` em
+`waitlist_entries` recusa a segunda. Quem espera no Setor A não espera no B.
 
 ### O que acontece ao cancelar
 
@@ -201,6 +203,71 @@ Tudo numa transação só:
 
 A cota não pode subir e descer no meio do caminho: haveria um instante em que a
 vaga estaria livre para um terceiro motorista.
+
+---
+
+## 4.2 Contrato de API (congelado — não invente URL)
+
+Cada dono implementa as suas; o front das outras stories já pode chamá-las
+sabendo o caminho. Mudar qualquer linha daqui exige avisar o grupo.
+
+| Método | Rota | Story |
+|---|---|---|
+| `POST` | `/sectors` | ESTC-1 ✅ |
+| `GET` | `/sectors` | ESTC-1 ✅ |
+| `GET` | `/sectors/:id` | ESTC-1 ✅ |
+| `POST` | `/reservations` | ESTC-2 |
+| `GET` | `/reservations?plate=&sectorId=` | ESTC-2 |
+| `GET` | `/reservations/:id` | ESTC-2 |
+| `PATCH` | `/reservations/:id/cancel` | ESTC-2 |
+| `PATCH` | `/reservations/:id/check-in` | ESTC-2 |
+| `PATCH` | `/reservations/:id/check-out` | ESTC-2 |
+| `GET` | `/reservations/:id/history` | ESTC-5 |
+| `GET` | `/ranking` | ESTC-3 |
+| `POST` | `/sectors/:id/waitlist` | ESTC-4 |
+| `GET` | `/sectors/:id/waitlist` | ESTC-4 |
+| `DELETE` | `/waitlist/:id` | ESTC-4 |
+
+Mutação que muda estado é `PATCH`, não `POST`. Coleção no plural, sempre.
+
+### Códigos de erro
+
+Estão em `common/errors.ts`. Lance a classe, nunca `HttpException` solta:
+
+`VALIDACAO` · `SETOR_NAO_ENCONTRADO` · `SETOR_SEM_COTA` · `RESERVA_NAO_ENCONTRADA`
+· `PLACA_JA_TEM_RESERVA` · `PLACA_JA_NA_LISTA` · `DATA_NO_PASSADO` ·
+`ESPERA_NAO_ENCONTRADA` · `TRANSICAO_INVALIDA`
+
+Precisa de um código novo? Adicione em `errors.ts` e avise — o front ramifica
+por `code`.
+
+---
+
+## 4.3 Regras transversais (valem para todas as stories)
+
+**Placa: normalize sempre.** Use `normalizarPlaca()` de `common/plate.ts`
+(maiúsculas, sem hífen nem espaço) **antes de gravar e antes de comparar**.
+`abc-1d23` e `ABC1D23` são o mesmo carro; gravar as duas formas quebra a regra
+de reserva única e a fila. Não validamos padrão Mercosul — a demo pode usar
+qualquer placa.
+
+**Uma placa, uma fila em todo o pátio.** Garantido pelo `UNIQUE (plate)` em
+`waitlist_entries`: quem está na fila do Setor A não entra na do B.
+
+**Data em UTC.** O front converte o `datetime-local` com `toISOString()` antes
+de enviar; o back compara com `new Date()`. Mandar hora local faz a validação
+"no passado" errar por 3 horas.
+
+**Dinheiro em centavos.** No front, use `reaisParaCentavos()` e
+`formatarCentavos()` de `lib/money.ts` — já existem, não escreva outra
+conversão.
+
+**A promoção reusa `ReservationsService`.** A ESTC-4 não cria `Reservation`
+por conta própria: chama o método da ESTC-2 passando a mesma `tx`. Duas
+implementações de "criar reserva" divergem no primeiro ajuste.
+
+**Erro sempre aparece na tela**, perto do que o causou. Vários critérios de
+aceite exigem isso literalmente — `alert()` ou log no console reprova o item.
 
 ---
 
@@ -285,7 +352,7 @@ model WaitlistEntry {
   position   Int              // ordem de entrada; menor entra primeiro
   createdAt  DateTime @default(now())
 
-  @@unique([sectorId, plate])   // ESTC-4: mesma placa não entra duas vezes na mesma lista
+  @@unique([plate])             // ESTC-4: uma placa está em no máximo uma fila do pátio
   @@index([sectorId, position])
 }
 

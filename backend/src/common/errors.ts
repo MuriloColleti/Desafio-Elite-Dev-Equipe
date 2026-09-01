@@ -6,7 +6,8 @@ export type AppErrorCode =
   | 'PLACA_JA_TEM_RESERVA'
   | 'PLACA_JA_NA_LISTA'
   | 'DATA_NO_PASSADO'
-  | 'ESPERA_NAO_ENCONTRADA';
+  | 'ESPERA_NAO_ENCONTRADA'
+  | 'TRANSICAO_INVALIDA';
 
 export abstract class AppError extends Error {
   abstract readonly code: AppErrorCode;
@@ -83,5 +84,19 @@ export class EsperaNaoEncontradaError extends AppError {
 
   constructor() {
     super('Entrada na lista de espera não encontrada.');
+  }
+}
+
+/**
+ * Transição de estado que o ciclo de vida não permite: check-in em reserva que
+ * não está AGENDADO, check-out em reserva que não está EM_USO, ou cancelar o
+ * que já terminou. Ver AGENTS.md §4.1.
+ */
+export class TransicaoInvalidaError extends AppError {
+  readonly code = 'TRANSICAO_INVALIDA' as const;
+  readonly status = 409;
+
+  constructor(mensagem: string) {
+    super(mensagem);
   }
 }
