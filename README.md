@@ -14,6 +14,24 @@ Desafio Dev Elite — Live Coding. NestJS + Prisma + PostgreSQL no back, React +
 
 ## Setup
 
+### Tudo em container (mais rápido)
+
+```bash
+docker compose up --build
+```
+
+Sobe banco, API e front. A migration e o seed rodam sozinhos na subida.
+Abra **http://localhost:5173** — o nginx faz proxy de `/api` para a API, então
+não há CORS nem URL de API no bundle.
+
+Para conferir que subiu certo: `bash backend/scripts/smoke.sh` (ou
+`API_URL=http://localhost:5173/api bash backend/scripts/smoke.sh` para testar
+pelo mesmo caminho que o browser usa).
+
+---
+
+## Setup manual (para desenvolver)
+
 Pré-requisitos: Node 20+, Docker e Docker Compose.
 
 ### 1. Banco
@@ -121,8 +139,8 @@ regra do backend depende dele — login não está no escopo (AGENTS.md §12).
 
 | Story | Back | Front | Observações |
 |---|---|---|---|
-| Fase 0 (base) | ✅ | ✅ | Migration aplicada e conferida no banco; seed com 3 setores; build limpo nos dois lados |
-| ESTC-1 Setores | 🔄 | 🔄 | Implementada e compilando; **falta o smoke test com API e tela de pé** |
+| Fase 0 (base) | ✅ | ✅ | Migrations conferidas no banco; seed; stack completa em container |
+| ESTC-1 Setores | ✅ | 🔄 | API: 12/12 no smoke. Front compila e é servido, mas a tela ainda não foi clicada por um humano |
 | ESTC-2 Reservas | ⬜ | ⬜ | |
 | ESTC-3 Ranking | ⬜ | ⬜ | |
 | ESTC-4 Lista de espera | ⬜ | ⬜ | |
