@@ -21,15 +21,17 @@ model Sector {
 }
 
 model Reservation {
-  id          String             @id @default(uuid())
-  plate       String
-  sectorId    String
-  sector      Sector             @relation(fields: [sectorId], references: [id])
-  expectedAt  DateTime
-  status      ReservationStatus  @default(ACTIVE)
-  createdAt   DateTime           @default(now())
-  cancelledAt DateTime?
-  events      ReservationEvent[]
+  id           String             @id @default(uuid())
+  plate        String
+  sectorId     String
+  sector       Sector             @relation(fields: [sectorId], references: [id])
+  expectedAt   DateTime
+  status       ReservationStatus  @default(AGENDADO)
+  createdAt    DateTime           @default(now())
+  checkedInAt  DateTime?
+  checkedOutAt DateTime?
+  cancelledAt  DateTime?
+  events       ReservationEvent[]
 
   @@index([sectorId])
   @@index([plate])
@@ -38,8 +40,10 @@ model Reservation {
 }
 
 enum ReservationStatus {
-  ACTIVE
-  CANCELLED
+  AGENDADO
+  EM_USO
+  CONCLUIDO
+  CANCELADO
 }
 
 model WaitlistEntry {
@@ -51,8 +55,8 @@ model WaitlistEntry {
   position   Int
   createdAt  DateTime @default(now())
 
-  @@unique([sectorId, plate])
-  @@index([sectorId, position])
+  @@unique([plate])
+  @@unique([sectorId, position])
   @@map("waitlist_entries")
 }
 
@@ -70,6 +74,8 @@ model ReservationEvent {
 
 enum ReservationEventType {
   CREATED
+  CHECKED_IN
+  CHECKED_OUT
   CANCELLED
   WAITLIST_JOINED
   WAITLIST_LEFT

@@ -143,7 +143,160 @@ As stories **não** são independentes. Ignorar isto custa merge quebrado na úl
 - **ESTC-3 só lê.** Não bloqueia ninguém e não é bloqueada — depende apenas de existirem reservas
   registradas.
 
-**Ordem de merge:** ESTC-1 → ESTC-2 → ESTC-4 → (ESTC-3 e ESTC-5 a qualquer momento).
+**Ordem de merge na `dev`:** ESTC-1 → ESTC-2 → ESTC-4 → (ESTC-3 e ESTC-5 a qualquer momento).
+
+---
+
+## 4.1 Ciclo de vida da reserva e da lista de espera (definido pelo grupo)
+
+Decisão do time, fora do enunciado. Vale para ESTC-2, ESTC-4 e ESTC-5.
+
+### Os quatro estados
+
+| Estado | Quando | Ocupa vaga? |
+|---|---|---|
+| `AGENDADO` | ao criar a reserva (padrão) | **sim** |
+| `EM_USO` | após o check-in | **sim** |
+| `CONCLUIDO` | após o check-out | não |
+| `CANCELADO` | ao cancelar | não |
+
+**Cota disponível = `quota` − reservas em `AGENDADO` ou `EM_USO`.**
+Nunca escreva essa lista à mão: use `ocupaVaga()` de `common/reservation-status.ts`.
+
+`EM_USO` ocupa vaga porque o carro está fisicamente no pátio — liberar no
+check-in venderia o mesmo lugar duas vezes.
+
+### Check-in e check-out
+
+Um modal na reserva, com o botão decidido pelo estado atual:
+
+- `AGENDADO` → botão **Check-in** → vira `EM_USO`, grava `checkedInAt`
+- `EM_USO` → botão **Check-out** → vira `CONCLUIDO`, grava `checkedOutAt`
+- `CONCLUIDO` e `CANCELADO` → só leitura, sem ação
+
+As duas transições gravam evento no histórico (`CHECKED_IN`, `CHECKED_OUT`).
+
+**Só o cancelamento aciona a lista de espera.** Check-out libera a vaga pela
+cota, sem promover ninguém — quem estava na fila reserva normalmente.
+
+### Quem é o próximo da fila
+
+**O menor `position` do setor.** `WaitlistEntry.position` é atribuído na entrada
+como `max(position do setor) + 1` **dentro da transação da inserção** — calcular
+fora dela faz dois motoristas simultâneos lerem o mesmo `max`. O
+`UNIQUE (sectorId, position)` recusa a colisão, mas quem insere precisa tratar o
+erro e tentar de novo. O valor **nunca é renumerado**: quem sai deixa um
+buraco (1, 3, 7) e a ordem continua correta, porque só importa o menor. Renumerar
+custaria escrita em N linhas e não muda o resultado.
+
+A fila é **por setor**: o `position` só é comparável dentro do mesmo `sectorId`.
+Mas a placa entra em **uma fila só** no pátio inteiro — `UNIQUE (plate)` em
+`waitlist_entries` recusa a segunda. Quem espera no Setor A não espera no B.
+
+**Cada fila tem numeração própria**, garantida por `UNIQUE (sectorId, position)`:
+posição 1 existe em todos os setores ao mesmo tempo, mas nunca duas vezes no
+mesmo setor. Sem esse índice, dois motoristas entrando juntos gravariam a mesma
+posição e "quem é o próximo" ficaria ambíguo.
+
+### O que acontece ao cancelar
+
+Tudo numa transação só:
+
+1. `UPDATE ... WHERE id = ? AND status = 'AGENDADO'` (ou `EM_USO`) — se não
+   afetou linha, a reserva já não estava ativa e nada mais acontece.
+2. Busca o menor `position` da fila daquele setor.
+3. **Achou** → cria a reserva da placa promovida (`AGENDADO`), remove da fila,
+   e a **cota não muda**.
+   **Não achou** → a cota volta a subir em 1, naturalmente.
+
+A cota não pode subir e descer no meio do caminho: haveria um instante em que a
+vaga estaria livre para um terceiro motorista.
+
+---
+
+## 4.2 Contrato de API (congelado — não invente URL)
+
+Cada dono implementa as suas; o front das outras stories já pode chamá-las
+sabendo o caminho. Mudar qualquer linha daqui exige avisar o grupo.
+
+| Método | Rota | Story |
+|---|---|---|
+| `POST` | `/sectors` | ESTC-1 ✅ |
+| `GET` | `/sectors` | ESTC-1 ✅ |
+| `GET` | `/sectors/:id` | ESTC-1 ✅ |
+| `POST` | `/reservations` | ESTC-2 |
+| `GET` | `/reservations?plate=&sectorId=` | ESTC-2 |
+| `GET` | `/reservations/:id` | ESTC-2 |
+| `PATCH` | `/reservations/:id/cancel` | ESTC-2 |
+| `PATCH` | `/reservations/:id/check-in` | ESTC-2 |
+| `PATCH` | `/reservations/:id/check-out` | ESTC-2 |
+| `GET` | `/reservations/:id/history` | ESTC-5 |
+| `GET` | `/ranking` | ESTC-3 |
+| `POST` | `/sectors/:id/waitlist` | ESTC-4 |
+| `GET` | `/sectors/:id/waitlist` | ESTC-4 |
+| `DELETE` | `/waitlist/:id` | ESTC-4 |
+
+Mutação que muda estado é `PATCH`, não `POST`. Coleção no plural, sempre.
+
+### Códigos de erro
+
+Estão em `common/errors.ts`. Lance a classe, nunca `HttpException` solta:
+
+`VALIDACAO` · `SETOR_NAO_ENCONTRADO` · `SETOR_SEM_COTA` · `RESERVA_NAO_ENCONTRADA`
+· `PLACA_JA_TEM_RESERVA` · `PLACA_JA_NA_LISTA` · `DATA_NO_PASSADO` ·
+`ESPERA_NAO_ENCONTRADA` · `TRANSICAO_INVALIDA`
+
+Precisa de um código novo? Adicione em `errors.ts` e avise — o front ramifica
+por `code`.
+
+---
+
+## 4.3 Regras transversais (valem para todas as stories)
+
+**Placa: normalize sempre.** Use `normalizarPlaca()` de `common/plate.ts`
+(maiúsculas, sem hífen nem espaço) **antes de gravar e antes de comparar**.
+`abc-1d23` e `ABC1D23` são o mesmo carro; gravar as duas formas quebra a regra
+de reserva única e a fila. Não validamos padrão Mercosul — a demo pode usar
+qualquer placa.
+
+**Uma placa, uma fila em todo o pátio.** Garantido pelo `UNIQUE (plate)` em
+`waitlist_entries`: quem está na fila do Setor A não entra na do B.
+
+**Data em UTC.** O front converte o `datetime-local` com `toISOString()` antes
+de enviar; o back compara com `new Date()`. Mandar hora local faz a validação
+"no passado" errar por 3 horas.
+
+**Dinheiro em centavos.** No front, use `reaisParaCentavos()` e
+`formatarCentavos()` de `lib/money.ts` — já existem, não escreva outra
+conversão.
+
+**A promoção reusa `ReservationsService`.** A ESTC-4 não cria `Reservation`
+por conta própria: chama o método da ESTC-2 passando a mesma `tx`. Duas
+implementações de "criar reserva" divergem no primeiro ajuste.
+
+**Uma placa, uma reserva ocupando vaga.** Garantido pelo índice parcial
+`uq_reserva_ativa_por_placa` — `UNIQUE (plate) WHERE status IN
+('AGENDADO','EM_USO')`. A placa acumula quantas reservas canceladas ou
+concluídas quiser no histórico; só as ativas são exclusivas. Ele é escrito à mão
+em SQL (o Prisma não expressa índice parcial): se `prisma migrate dev` sugerir
+removê-lo, **não aceite**.
+
+**Formato das respostas de lista.** `GET /reservations` devolve o setor
+aninhado (`sector: { id, name, location }`), não só `sectorId` — senão o front
+faz uma chamada por linha para mostrar o nome. Ordem: mais recente primeiro
+(`createdAt desc`). Sem paginação: não está nos critérios e não cabe no tempo.
+
+**Ranking desempata por nome.** Setores com a mesma contagem saem em ordem
+alfabética; sem desempate, a ordem muda entre recarregamentos e a tela parece
+instável na demo.
+
+**O texto do histórico é do front.** O banco guarda o enum (`CREATED`,
+`WAITLIST_PROMOTED`); a frase em português ("Reserva criada", "Promovida da
+lista de espera") vive no front. Gravar texto no banco impede corrigir a redação
+sem migration.
+
+**Erro sempre aparece na tela**, perto do que o causou. Vários critérios de
+aceite exigem isso literalmente — `alert()` ou log no console reprova o item.
 
 ---
 
@@ -206,16 +359,18 @@ model Reservation {
   sectorId    String
   sector      Sector             @relation(fields: [sectorId], references: [id])
   expectedAt  DateTime           // data/hora prevista de chegada
-  status      ReservationStatus  @default(ACTIVE)
-  createdAt   DateTime           @default(now())
-  cancelledAt DateTime?
+  status       ReservationStatus @default(AGENDADO)
+  createdAt    DateTime          @default(now())
+  checkedInAt  DateTime?
+  checkedOutAt DateTime?
+  cancelledAt  DateTime?
   events      ReservationEvent[]
 
   @@index([sectorId])
   @@index([plate])
 }
 
-enum ReservationStatus { ACTIVE CANCELLED }
+enum ReservationStatus { AGENDADO EM_USO CONCLUIDO CANCELADO }
 
 model WaitlistEntry {
   id         String   @id @default(uuid())
@@ -226,7 +381,8 @@ model WaitlistEntry {
   position   Int              // ordem de entrada; menor entra primeiro
   createdAt  DateTime @default(now())
 
-  @@unique([sectorId, plate])   // ESTC-4: mesma placa não entra duas vezes na mesma lista
+  @@unique([plate])             // ESTC-4: uma placa está em no máximo uma fila do pátio
+  @@unique([sectorId, position]) // cada setor tem sua própria numeração, sem empate
   @@index([sectorId, position])
 }
 
@@ -243,6 +399,8 @@ model ReservationEvent {
 
 enum ReservationEventType {
   CREATED
+  CHECKED_IN
+  CHECKED_OUT
   CANCELLED
   WAITLIST_JOINED
   WAITLIST_LEFT
@@ -251,7 +409,8 @@ enum ReservationEventType {
 ```
 
 **Cota disponível é derivada, nunca armazenada.**
-`disponível = sector.quota − count(reservations WHERE sectorId = ? AND status = 'ACTIVE')`.
+`disponível = sector.quota − count(reservations em AGENDADO ou EM_USO)`.
+Use `ocupaVaga()` de `common/reservation-status.ts` — não repita a lista de estados.
 Guardar um contador em coluna cria dois lugares para ficarem fora de sincronia. Proibido.
 
 ---
@@ -313,15 +472,38 @@ O que não pode quebrar nem sob clique duplo ou dois motoristas agindo ao mesmo 
 **Fase 0 — primeiros 30 minutos, feita por quem pegou ESTC-1, com os outros acompanhando:**
 schema Prisma completo (o da seção 7 inteiro, incluindo as tabelas das outras stories), migration
 inicial, `PrismaService`, filtro de erro global, registrador de eventos, esqueleto do front com
-rotas e cliente HTTP, e seed com três setores. Isso vai para a `main` antes de qualquer story
+rotas e cliente HTTP, e seed com três setores. Isso vai para a `dev` antes de qualquer story
 começar.
 
-Enquanto a fase 0 não estiver na `main`, ninguém escreve código de story — só lê o enunciado e
+Enquanto a fase 0 não estiver na `dev`, ninguém escreve código de story — só lê o enunciado e
 desenha os DTOs.
 
-- **Branch por story:** `estc-1-setores`, `estc-2-reservas`, e assim por diante.
+### Branches
+
+`main` é a entrega: só recebe merge da `dev` e deve estar sempre demonstrável. `dev` é a
+integração, e é contra ela que todo mundo abre PR — ninguém abre PR direto na `main`.
+
+As cinco branches de story já existem no remoto, criadas a partir da `dev`. Cada dono só faz
+checkout da sua:
+
+| Story | Branch | Dono |
+|---|---|---|
+| ESTC-1 | `estc-1-setores` | Murilo |
+| ESTC-2 | `estc-2-reservas` | Lucas |
+| ESTC-3 | `estc-3-ranking` | Uallace |
+| ESTC-4 | `estc-4-espera` | isabeli, rafael |
+| ESTC-5 | `estc-5-historico` | Marcos |
+
+```
+estc-N-*  →  dev  →  main
+```
+
 - **Commits pequenos e frequentes.** O histórico é evidência de processo.
-- **Merge na ordem da seção 4.** Antes de abrir PR, `git pull --rebase` da `main`.
+- **Merge na ordem da seção 4**, sempre na `dev`. Antes de abrir PR,
+  `git pull --rebase origin dev`.
+- **Depois que alguém mergear na `dev`**, quem ainda está em story roda
+  `git pull --rebase origin dev` para não acumular conflito para o fim.
+- **`dev` → `main` só na integração final**, com o fluxo completo rodando (seção 11, último item).
 - **Migration só na fase 0.** Se uma story precisar mesmo de coluna nova, avisa o grupo antes de
   gerar — duas migrations concorrentes travam todo mundo.
 - **Ao terminar, marcar os critérios de aceite um a um contra a tela rodando**, não contra o

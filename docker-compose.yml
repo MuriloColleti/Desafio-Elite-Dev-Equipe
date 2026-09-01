@@ -16,5 +16,27 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    build: ./backend
+    container_name: estacionamento-api
+    environment:
+      # Host `db`, não localhost: dentro da rede do compose o banco é o serviço.
+      DATABASE_URL: postgresql://estacionamento:estacionamento@db:5432/estacionamento?schema=public
+      PORT: 3000
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    container_name: estacionamento-web
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
 volumes:
   pgdata:

@@ -1,0 +1,394 @@
+/* Paleta do enunciado: roxo da marca, azul-noite dos títulos, ciano de apoio. */
+:root {
+  --roxo: #4f46e5;
+  --roxo-escuro: #4338ca;
+  --roxo-claro: #ede9fe;
+  --noite: #16162b;
+  --ciano: #22d3ee;
+
+  --texto: #16162b;
+  --suave: #64708a;
+  --borda: #e2e5ee;
+  --fundo: #f7f8fc;
+  --branco: #fff;
+
+  --erro: #b42318;
+  --erro-fundo: #fef3f2;
+  --erro-borda: #fecdca;
+  --sucesso: #067647;
+
+  --raio: 10px;
+  --sombra: 0 1px 2px rgb(22 22 43 / 6%), 0 1px 3px rgb(22 22 43 / 4%);
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fundo);
+}
+
+h1,
+h2 {
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- topo ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 0 28px;
+  height: 60px;
+  background: var(--noite);
+  border-bottom: 3px solid var(--roxo);
+}
+
+.topbar__marca {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--branco);
+  white-space: nowrap;
+}
+
+/* Marca o produto com o roxo do enunciado sem competir com a navegação. */
+.topbar__marca::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 9px;
+  border-radius: 2px;
+  background: var(--ciano);
+  vertical-align: middle;
+}
+
+.topbar__nav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.navlink {
+  padding: 7px 13px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #a9b1c7;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.navlink:hover {
+  background: rgb(255 255 255 / 8%);
+  color: var(--branco);
+}
+
+.navlink--ativo,
+.navlink--ativo:hover {
+  background: var(--roxo);
+  color: var(--branco);
+}
+
+.topbar__perfil {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8b93ab;
+}
+
+.topbar__perfil select {
+  padding: 6px 10px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 8%);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--branco);
+  cursor: pointer;
+}
+
+.topbar__perfil select option {
+  color: var(--texto);
+}
+
+/* ---------- conteúdo ---------- */
+
+.conteudo {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 28px 64px;
+}
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pagina > h1 {
+  font-size: 26px;
+}
+
+.cartao {
+  padding: 22px 24px;
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra);
+}
+
+.cartao h2 {
+  margin-bottom: 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--roxo);
+}
+
+/* ---------- formulário ---------- */
+
+.campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--suave);
+}
+
+.campos--busca {
+  align-items: end;
+  margin-bottom: 0;
+}
+
+.campos--busca button {
+  height: 38px;
+}
+
+.campos input,
+.campos select {
+  padding: 9px 12px;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  background: var(--branco);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--texto);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.campos input::placeholder {
+  color: #aab2c4;
+}
+
+.campos input:focus,
+.campos select:focus {
+  outline: none;
+  border-color: var(--roxo);
+  box-shadow: 0 0 0 3px rgb(79 70 229 / 14%);
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--roxo);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--branco);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button:hover:not(:disabled) {
+  background: var(--roxo-escuro);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.botao--secundario {
+  background: var(--branco);
+  border: 1px solid var(--erro-borda);
+  color: var(--erro);
+}
+
+.botao--secundario:hover:not(:disabled) {
+  background: var(--erro-fundo);
+}
+
+.tabela__acoes {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.tabela__acoes button {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* ---------- status da reserva ---------- */
+
+.status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status--agendado {
+  background: var(--roxo-claro);
+  color: var(--roxo);
+}
+
+.status--em_uso {
+  background: rgb(34 211 238 / 15%);
+  color: #0e7490;
+}
+
+.status--concluido {
+  background: rgb(6 118 71 / 12%);
+  color: var(--sucesso);
+}
+
+.status--cancelado {
+  background: var(--erro-fundo);
+  color: var(--erro);
+}
+
+/* ---------- mensagens ---------- */
+
+/* Vários critérios de aceite exigem o erro visível na tela, não em alert. */
+.erro {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 11px 14px;
+  border: 1px solid var(--erro-borda);
+  border-left: 3px solid var(--erro);
+  border-radius: 8px;
+  background: var(--erro-fundo);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--erro);
+}
+
+.erro::before {
+  content: '!';
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--erro);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: var(--branco);
+}
+
+.vazio {
+  margin: 0;
+  padding: 28px 0;
+  font-size: 14px;
+  text-align: center;
+  color: var(--suave);
+}
+
+/* ---------- tabela ---------- */
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.tabela th {
+  padding: 0 14px 10px;
+  border-bottom: 1px solid var(--borda);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--suave);
+}
+
+.tabela td {
+  padding: 13px 14px;
+  border-bottom: 1px solid #f0f2f7;
+}
+
+.tabela tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabela tbody tr:hover td {
+  background: #fafbff;
+}
+
+.tabela td:first-child {
+  font-weight: 600;
+}
+
+/* Números alinham à direita: comparar cota entre linhas fica imediato. */
+.tabela th:nth-child(n + 3),
+.tabela td:nth-child(n + 3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- placeholder das stories ---------- */
+
+.aviso {
+  padding: 64px 24px;
+  border: 1px dashed #cdd3e3;
+  border-radius: var(--raio);
+  background: var(--branco);
+  text-align: center;
+}
+
+.aviso h1 {
+  margin-bottom: 8px;
+  font-size: 17px;
+  color: var(--roxo);
+}
+
+.aviso p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--suave);
+}
