@@ -158,14 +158,14 @@ export class WaitlistService {
    * Promove o primeiro da fila do setor para reserva ativa, dentro da mesma
    * transação do cancelamento que abriu a vaga (AGENTS.md §4 e §4.1).
    *
-   * Stub da ESTC-2: quem entregar a ESTC-4 preenche o corpo aqui — sem tocar
-   * em `reservations` — buscando o menor `position` da fila do setor e, se
-   * achar, chamando `this.reservations.criarComTx(...)` com a MESMA `tx`
-   * (AGENTS.md §4.3), depois removendo a entrada da fila. Não achando
-   * ninguém, retorna `null` e a cota sobe sozinha por ser derivada.
+   * Recebe `canceladaId` — o id da reserva cancelada que abriu a vaga — só
+   * para gravar no histórico da promoção (ESTC-5 exige indicar qual
+   * cancelamento a originou). Não participa de nenhuma regra de negócio
+   * daqui: cota e ordem da fila não dependem dele.
    */
   async promoverProximo(
     sectorId: string,
+    canceladaId: string,
     tx: TxClient,
   ): Promise<PromocaoResultado | null> {
     const proximo = await tx.waitlistEntry.findFirst({
@@ -195,6 +195,18 @@ export class WaitlistService {
         id: proximo.id,
       },
     });
+
+    // A reserva promovida já existe nesse ponto, então o evento pode ser
+    // gravado com segurança (diferente de WAITLIST_JOINED/WAITLIST_LEFT,
+    // que ainda não têm reserva pra apontar — questão em aberto com o grupo).
+    await this.history.registrar(
+      {
+        reservationId: reserva.id,
+        type: "WAITLIST_PROMOTED",
+        detail: canceladaId,
+      },
+      tx,
+    );
 
     return {
       reservationId: reserva.id,

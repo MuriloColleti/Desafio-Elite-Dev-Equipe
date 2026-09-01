@@ -143,8 +143,9 @@ export class ReservationsService {
 
       // Gancho para a fila de espera (ESTC-4, AGENTS.md §4): quem preencher o
       // corpo decide se promove alguém; a cota, por ser derivada, se ajusta
-      // sozinha nos dois casos.
-      await this.waitlist.promoverProximo(reserva.sectorId, tx);
+      // sozinha nos dois casos. Passa o id do cancelamento pra ESTC-5 saber
+      // qual cancelamento originou a promoção (AGENTS.md §3, ESTC-5).
+      await this.waitlist.promoverProximo(reserva.sectorId, id, tx);
 
       return this.paraResponse(reserva);
     });
