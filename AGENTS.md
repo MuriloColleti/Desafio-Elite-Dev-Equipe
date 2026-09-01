@@ -143,7 +143,7 @@ As stories **não** são independentes. Ignorar isto custa merge quebrado na úl
 - **ESTC-3 só lê.** Não bloqueia ninguém e não é bloqueada — depende apenas de existirem reservas
   registradas.
 
-**Ordem de merge:** ESTC-1 → ESTC-2 → ESTC-4 → (ESTC-3 e ESTC-5 a qualquer momento).
+**Ordem de merge na `dev`:** ESTC-1 → ESTC-2 → ESTC-4 → (ESTC-3 e ESTC-5 a qualquer momento).
 
 ---
 
@@ -313,15 +313,38 @@ O que não pode quebrar nem sob clique duplo ou dois motoristas agindo ao mesmo 
 **Fase 0 — primeiros 30 minutos, feita por quem pegou ESTC-1, com os outros acompanhando:**
 schema Prisma completo (o da seção 7 inteiro, incluindo as tabelas das outras stories), migration
 inicial, `PrismaService`, filtro de erro global, registrador de eventos, esqueleto do front com
-rotas e cliente HTTP, e seed com três setores. Isso vai para a `main` antes de qualquer story
+rotas e cliente HTTP, e seed com três setores. Isso vai para a `dev` antes de qualquer story
 começar.
 
-Enquanto a fase 0 não estiver na `main`, ninguém escreve código de story — só lê o enunciado e
+Enquanto a fase 0 não estiver na `dev`, ninguém escreve código de story — só lê o enunciado e
 desenha os DTOs.
 
-- **Branch por story:** `estc-1-setores`, `estc-2-reservas`, e assim por diante.
+### Branches
+
+`main` é a entrega: só recebe merge da `dev` e deve estar sempre demonstrável. `dev` é a
+integração, e é contra ela que todo mundo abre PR — ninguém abre PR direto na `main`.
+
+As cinco branches de story já existem no remoto, criadas a partir da `dev`. Cada dono só faz
+checkout da sua:
+
+| Story | Branch | Dono |
+|---|---|---|
+| ESTC-1 | `estc-1-setores` | Murilo |
+| ESTC-2 | `estc-2-reservas` | Lucas |
+| ESTC-3 | `estc-3-ranking` | Uallace |
+| ESTC-4 | `estc-4-espera` | isabeli, rafael |
+| ESTC-5 | `estc-5-historico` | Marcos |
+
+```
+estc-N-*  →  dev  →  main
+```
+
 - **Commits pequenos e frequentes.** O histórico é evidência de processo.
-- **Merge na ordem da seção 4.** Antes de abrir PR, `git pull --rebase` da `main`.
+- **Merge na ordem da seção 4**, sempre na `dev`. Antes de abrir PR,
+  `git pull --rebase origin dev`.
+- **Depois que alguém mergear na `dev`**, quem ainda está em story roda
+  `git pull --rebase origin dev` para não acumular conflito para o fim.
+- **`dev` → `main` só na integração final**, com o fluxo completo rodando (seção 11, último item).
 - **Migration só na fase 0.** Se uma story precisar mesmo de coluna nova, avisa o grupo antes de
   gerar — duas migrations concorrentes travam todo mundo.
 - **Ao terminar, marcar os critérios de aceite um a um contra a tela rodando**, não contra o
