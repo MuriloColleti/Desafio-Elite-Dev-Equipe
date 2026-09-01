@@ -144,7 +144,7 @@ regra do backend depende dele — login não está no escopo (AGENTS.md §12).
 | ESTC-2 Reservas | ✅ | ✅ | API: 17/17 critérios (inclusive check-in/check-out) validados contra banco real. Fluxo clicado de ponta a ponta na tela: reservar → check-in → check-out, com botões e status mudando corretamente |
 | ESTC-3 Ranking | ✅ | ✅ | 3 testes unitários passando. Cancelada e concluída contam no ranking; estado vazio tratado |
 | ESTC-4 Lista de espera | ⬜ | ⬜ | |
-| ESTC-5 Histórico | ⬜ | ⬜ | |
+| ESTC-5 Histórico | ✅ | ✅ | Testado na tela: criação, cancelamento, entrada/saída da fila e promoção (com o cancelamento de origem) aparecem em ordem cronológica; reserva sem eventos além da criação e ID inexistente também conferidos |
 
 Mantenha esta tabela sincronizada com a realidade. Marcar como pronto o que não foi visto
 funcionando na tela é o pior erro possível aqui.
