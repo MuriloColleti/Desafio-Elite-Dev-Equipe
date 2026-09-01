@@ -10,7 +10,6 @@ import {
 import { normalizarPlaca } from "../common/plate";
 import { ocupaVaga } from "../common/reservation-status";
 import { TxClient } from "../common/transaction";
-import { HistoryService } from "../history/history.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { ReservationsService } from "../reservations/reservations.service";
 import { CreateWaitlistEntryDto } from "./dto/create-waitlist-entry.dto";
@@ -24,7 +23,6 @@ export interface PromocaoResultado {
 export class WaitlistService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly history: HistoryService,
     @Inject(forwardRef(() => ReservationsService))
     private readonly reservations: ReservationsService,
   ) {}
@@ -62,6 +60,15 @@ export class WaitlistService {
         throw new PlacaJaTemReservaError();
       }
 
+      const jaNaLista = await tx.waitlistEntry.findUnique({
+        where: { plate },
+        select: { id: true },
+      });
+
+      if (jaNaLista) {
+        throw new PlacaJaNaListaError();
+      }
+
       for (;;) {
         const ultimaPosicao = await tx.waitlistEntry.aggregate({
           where: { sectorId },
@@ -80,29 +87,12 @@ export class WaitlistService {
             },
           });
 
-          await this.history.registrar(
-            {
-              reservationId: entry.id,
-              type: "WAITLIST_JOINED",
-            },
-            tx,
-          );
-
           return entry;
         } catch (error) {
           if (
             error instanceof PrismaClientKnownRequestError &&
             error.code === "P2002"
           ) {
-            const placaNaLista = await tx.waitlistEntry.findUnique({
-              where: { plate },
-              select: { id: true },
-            });
-
-            if (placaNaLista) {
-              throw new PlacaJaNaListaError();
-            }
-
             continue;
           }
 
@@ -141,14 +131,6 @@ export class WaitlistService {
       await tx.waitlistEntry.delete({
         where: { id },
       });
-
-      await this.history.registrar(
-        {
-          reservationId: entry.id,
-          type: "WAITLIST_LEFT",
-        },
-        tx,
-      );
 
       return entry;
     });
