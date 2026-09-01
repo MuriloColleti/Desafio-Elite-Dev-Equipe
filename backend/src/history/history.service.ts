@@ -13,26 +13,9 @@ export interface EventoRegistrado {
 export interface EventoHistorico {
   id: string;
   type: ReservationEventType;
-  description: string;
   detail: string | null;
   occurredAt: Date;
 }
-
-// A promoção guarda em `detail` o id da reserva cancelada que liberou a vaga
-// (AGENTS.md §3, critério da ESTC-5). Quem grava CANCELLED/WAITLIST_PROMOTED
-// combina esse valor; aqui só formatamos para leitura.
-const DESCREVER_EVENTO: Record<ReservationEventType, (detail: string | null) => string> = {
-  CREATED: () => 'Reserva criada.',
-  CANCELLED: () => 'Reserva cancelada.',
-  CHECKED_IN: () => 'Check-in realizado.',
-  CHECKED_OUT: () => 'Check-out realizado.',
-  WAITLIST_JOINED: () => 'Entrou na lista de espera.',
-  WAITLIST_LEFT: () => 'Saiu da lista de espera por vontade própria.',
-  WAITLIST_PROMOTED: (detail) =>
-    detail
-      ? `Promovido da lista de espera para reserva ativa, com a vaga liberada pelo cancelamento da reserva ${detail}.`
-      : 'Promovido da lista de espera para reserva ativa.',
-};
 
 @Injectable()
 export class HistoryService {
@@ -55,6 +38,8 @@ export class HistoryService {
     });
   }
 
+  // O enum e o `detail` (id da reserva cancelada, na promoção) são tudo que
+  // sai daqui — a frase em português vive no front (AGENTS.md §4.3).
   async listarPorReserva(reservationId: string): Promise<EventoHistorico[]> {
     const reserva = await this.prisma.reservation.findUnique({
       where: { id: reservationId },
@@ -75,7 +60,6 @@ export class HistoryService {
       type: evento.type,
       detail: evento.detail,
       occurredAt: evento.occurredAt,
-      description: DESCREVER_EVENTO[evento.type](evento.detail),
     }));
   }
 }

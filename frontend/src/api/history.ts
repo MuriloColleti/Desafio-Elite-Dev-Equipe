@@ -12,7 +12,6 @@ export type TipoEventoHistorico =
 export interface EventoHistorico {
   id: string;
   type: TipoEventoHistorico;
-  description: string;
   detail: string | null;
   occurredAt: string;
 }

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import { listarHistorico, type EventoHistorico } from '../api/history';
+import { descreverEventoHistorico } from '../lib/history';
 
 const FORMATADOR_DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
   dateStyle: 'short',
@@ -84,7 +85,7 @@ export function HistoricoPage() {
                 {eventos.map((item) => (
                   <tr key={item.id}>
                     <td>{FORMATADOR_DATA_HORA.format(new Date(item.occurredAt))}</td>
-                    <td>{item.description}</td>
+                    <td>{descreverEventoHistorico(item.type, item.detail)}</td>
                   </tr>
                 ))}
               </tbody>
