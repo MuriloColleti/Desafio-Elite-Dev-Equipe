@@ -4,20 +4,20 @@ import { WaitlistService } from './waitlist.service';
 
 @Controller()
 export class WaitlistController {
-constructor(private readonly waitlist: WaitlistService) {}
+    constructor(private readonly waitlist: WaitlistService) {}
 
-@Post('sectors/:id/waitlist')
-entrar(@Param('id') sectorId: string, @Body() dto: CreateWaitlistEntryDto) {
-return this.waitlist.entrar(sectorId, dto);
-}
+    @Post('sectors/:id/waitlist')
+    entrar(@Param('id') sectorId: string, @Body() dto: CreateWaitlistEntryDto) {
+        return this.waitlist.entrar(sectorId, dto);
+    }
 
-@Get('sectors/:id/waitlist')
-listar(@Param('id') sectorId: string) {
-return this.waitlist.listar(sectorId);
-}
+    @Get('sectors/:id/waitlist')
+    listar(@Param('id') sectorId: string) {
+        return this.waitlist.listar(sectorId);
+    }
 
-@Delete('waitlist/:id')
-sair(@Param('id') id: string) {
-return this.waitlist.sair(id);
-}
+    @Delete('waitlist/:id')
+    sair(@Param('id') id: string) {
+        return this.waitlist.sair(id);
+    }
 }
