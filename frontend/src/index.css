@@ -392,3 +392,21 @@ button:disabled {
   font-size: 14px;
   color: var(--suave);
 }
+
+/* Sinaliza na ESTC-4 se o setor está sem cota — é o que justifica entrar na
+   fila em vez de reservar direto. */
+.aviso-cota {
+  margin: 0;
+  padding: 11px 14px;
+  border-radius: 8px;
+  border-left: 3px solid var(--roxo);
+  background: var(--roxo-claro);
+  font-size: 13.5px;
+  color: var(--texto);
+}
+
+.aviso-cota--esgotada {
+  border-left-color: #b54708;
+  background: #fffaeb;
+  color: #93370d;
+}
