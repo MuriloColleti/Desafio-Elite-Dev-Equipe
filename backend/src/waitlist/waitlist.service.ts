@@ -10,6 +10,7 @@ import {
 import { normalizarPlaca } from "../common/plate";
 import { ocupaVaga } from "../common/reservation-status";
 import { TxClient } from "../common/transaction";
+import { HistoryService } from "../history/history.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { ReservationsService } from "../reservations/reservations.service";
 import { CreateWaitlistEntryDto } from "./dto/create-waitlist-entry.dto";
@@ -23,6 +24,7 @@ export interface PromocaoResultado {
 export class WaitlistService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly history: HistoryService,
     @Inject(forwardRef(() => ReservationsService))
     private readonly reservations: ReservationsService,
   ) {}
