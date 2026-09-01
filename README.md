@@ -141,7 +141,7 @@ regra do backend depende dele — login não está no escopo (AGENTS.md §12).
 |---|---|---|---|
 | Fase 0 (base) | ✅ | ✅ | Migrations conferidas no banco; seed; stack completa em container |
 | ESTC-1 Setores | ✅ | 🔄 | API: 12/12 no smoke. Front compila e é servido, mas a tela ainda não foi clicada por um humano |
-| ESTC-2 Reservas | ⬜ | ⬜ | |
+| ESTC-2 Reservas | ✅ | ⬜ | API: 17/17 critérios (inclusive check-in/check-out) validados contra banco real rodando. Front ainda não começou |
 | ESTC-3 Ranking | ⬜ | ⬜ | |
 | ESTC-4 Lista de espera | ⬜ | ⬜ | |
 | ESTC-5 Histórico | ✅ | ✅ | Testado na tela: criação, cancelamento, entrada/saída da fila e promoção (com o cancelamento de origem) aparecem em ordem cronológica; reserva sem eventos além da criação e ID inexistente também conferidos |
