@@ -274,6 +274,27 @@ conversão.
 por conta própria: chama o método da ESTC-2 passando a mesma `tx`. Duas
 implementações de "criar reserva" divergem no primeiro ajuste.
 
+**Uma placa, uma reserva ocupando vaga.** Garantido pelo índice parcial
+`uq_reserva_ativa_por_placa` — `UNIQUE (plate) WHERE status IN
+('AGENDADO','EM_USO')`. A placa acumula quantas reservas canceladas ou
+concluídas quiser no histórico; só as ativas são exclusivas. Ele é escrito à mão
+em SQL (o Prisma não expressa índice parcial): se `prisma migrate dev` sugerir
+removê-lo, **não aceite**.
+
+**Formato das respostas de lista.** `GET /reservations` devolve o setor
+aninhado (`sector: { id, name, location }`), não só `sectorId` — senão o front
+faz uma chamada por linha para mostrar o nome. Ordem: mais recente primeiro
+(`createdAt desc`). Sem paginação: não está nos critérios e não cabe no tempo.
+
+**Ranking desempata por nome.** Setores com a mesma contagem saem em ordem
+alfabética; sem desempate, a ordem muda entre recarregamentos e a tela parece
+instável na demo.
+
+**O texto do histórico é do front.** O banco guarda o enum (`CREATED`,
+`WAITLIST_PROMOTED`); a frase em português ("Reserva criada", "Promovida da
+lista de espera") vive no front. Gravar texto no banco impede corrigir a redação
+sem migration.
+
 **Erro sempre aparece na tela**, perto do que o causou. Vários critérios de
 aceite exigem isso literalmente — `alert()` ou log no console reprova o item.
 
