@@ -1,19 +1,19 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import {
   DataNoPassadoError,
   EsperaNaoEncontradaError,
   PlacaJaNaListaError,
   PlacaJaTemReservaError,
   SetorNaoEncontradoError,
-} from '../common/errors';
-import { normalizarPlaca } from '../common/plate';
-import { ocupaVaga } from '../common/reservation-status';
-import { TxClient } from '../common/transaction';
-import { HistoryService } from '../history/history.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { ReservationsService } from '../reservations/reservations.service';
-import { CreateWaitlistEntryDto } from './dto/create-waitlist-entry.dto';
+} from "../common/errors";
+import { normalizarPlaca } from "../common/plate";
+import { ocupaVaga } from "../common/reservation-status";
+import { TxClient } from "../common/transaction";
+import { HistoryService } from "../history/history.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { ReservationsService } from "../reservations/reservations.service";
+import { CreateWaitlistEntryDto } from "./dto/create-waitlist-entry.dto";
 
 export interface PromocaoResultado {
   reservationId: string;
@@ -83,7 +83,7 @@ export class WaitlistService {
           await this.history.registrar(
             {
               reservationId: entry.id,
-              type: 'WAITLIST_JOINED',
+              type: "WAITLIST_JOINED",
             },
             tx,
           );
@@ -92,7 +92,7 @@ export class WaitlistService {
         } catch (error) {
           if (
             error instanceof PrismaClientKnownRequestError &&
-            error.code === 'P2002'
+            error.code === "P2002"
           ) {
             const placaNaLista = await tx.waitlistEntry.findUnique({
               where: { plate },
@@ -124,7 +124,7 @@ export class WaitlistService {
 
     return this.prisma.waitlistEntry.findMany({
       where: { sectorId },
-      orderBy: { position: 'asc' },
+      orderBy: { position: "asc" },
     });
   }
 
@@ -145,7 +145,7 @@ export class WaitlistService {
       await this.history.registrar(
         {
           reservationId: entry.id,
-          type: 'WAITLIST_LEFT',
+          type: "WAITLIST_LEFT",
         },
         tx,
       );
@@ -164,7 +164,41 @@ export class WaitlistService {
    * (AGENTS.md §4.3), depois removendo a entrada da fila. Não achando
    * ninguém, retorna `null` e a cota sobe sozinha por ser derivada.
    */
-  async promoverProximo(sectorId: string, tx: TxClient): Promise<PromocaoResultado | null> {
-    return null;
+  async promoverProximo(
+    sectorId: string,
+    tx: TxClient,
+  ): Promise<PromocaoResultado | null> {
+    const proximo = await tx.waitlistEntry.findFirst({
+      where: {
+        sectorId,
+      },
+      orderBy: {
+        position: "asc",
+      },
+    });
+
+    if (!proximo) {
+      return null;
+    }
+
+    const reserva = await this.reservations.criarComTx(
+      {
+        plate: proximo.plate,
+        sectorId: proximo.sectorId,
+        expectedAt: proximo.expectedAt,
+      },
+      tx,
+    );
+
+    await tx.waitlistEntry.delete({
+      where: {
+        id: proximo.id,
+      },
+    });
+
+    return {
+      reservationId: reserva.id,
+      plate: reserva.plate,
+    };
   }
 }
