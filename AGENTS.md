@@ -182,13 +182,21 @@ cota, sem promover ninguém — quem estava na fila reserva normalmente.
 ### Quem é o próximo da fila
 
 **O menor `position` do setor.** `WaitlistEntry.position` é atribuído na entrada
-como `max(position do setor) + 1`, e **nunca é renumerado**: quem sai deixa um
+como `max(position do setor) + 1` **dentro da transação da inserção** — calcular
+fora dela faz dois motoristas simultâneos lerem o mesmo `max`. O
+`UNIQUE (sectorId, position)` recusa a colisão, mas quem insere precisa tratar o
+erro e tentar de novo. O valor **nunca é renumerado**: quem sai deixa um
 buraco (1, 3, 7) e a ordem continua correta, porque só importa o menor. Renumerar
 custaria escrita em N linhas e não muda o resultado.
 
 A fila é **por setor**: o `position` só é comparável dentro do mesmo `sectorId`.
 Mas a placa entra em **uma fila só** no pátio inteiro — `UNIQUE (plate)` em
 `waitlist_entries` recusa a segunda. Quem espera no Setor A não espera no B.
+
+**Cada fila tem numeração própria**, garantida por `UNIQUE (sectorId, position)`:
+posição 1 existe em todos os setores ao mesmo tempo, mas nunca duas vezes no
+mesmo setor. Sem esse índice, dois motoristas entrando juntos gravariam a mesma
+posição e "quem é o próximo" ficaria ambíguo.
 
 ### O que acontece ao cancelar
 
@@ -353,6 +361,7 @@ model WaitlistEntry {
   createdAt  DateTime @default(now())
 
   @@unique([plate])             // ESTC-4: uma placa está em no máximo uma fila do pátio
+  @@unique([sectorId, position]) // cada setor tem sua própria numeração, sem empate
   @@index([sectorId, position])
 }
 
